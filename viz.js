@@ -10,22 +10,22 @@ looker.plugins.visualizations.add({
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 
         script.onload = () => {
-            // Create container
-            element.innerHTML = '<div id="3d-container" style="width: 100%; height: 400px;"></div>';
-            const container = element.querySelector('#3d-container');
+            // Create container - FIXED: removed the id and just use the element directly
+            element.style.width = '100%';
+            element.style.height = '400px';
 
             // Setup scene
             const scene = new THREE.Scene();
             scene.background = new THREE.Color(0xf0f0f0);  // Light gray background
 
             // Setup camera
-            const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            const camera = new THREE.PerspectiveCamera(75, element.clientWidth / element.clientHeight, 0.1, 1000);
             camera.position.z = 5;
 
             // Setup renderer
             const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            container.appendChild(renderer.domElement);
+            renderer.setSize(element.clientWidth, element.clientHeight);
+            element.appendChild(renderer.domElement);
 
             // Add a cube
             const geometry = new THREE.BoxGeometry();
@@ -52,9 +52,9 @@ looker.plugins.visualizations.add({
 
             // Handle window resize
             window.addEventListener('resize', () => {
-                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.aspect = element.clientWidth / element.clientHeight;
                 camera.updateProjectionMatrix();
-                renderer.setSize(container.clientWidth, container.clientHeight);
+                renderer.setSize(element.clientWidth, element.clientHeight);
             });
 
             // Start animation
@@ -65,7 +65,6 @@ looker.plugins.visualizations.add({
     },
 
     updateAsync: function (data, element, config, queryResponse, details) {
-        // This will be used later for data updates
         return;
     }
 });

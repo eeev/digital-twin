@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>3D Model Test</title>
+</head>
+
+<body>
+    <div id="test-container" style="width: 800px; height: 600px;"></div>
+
+    <!-- Mock Looker object -->
+    <script>
+        const looker = {
+            plugins: {
+                visualizations: {
+                    add: function (config) {
+                        // Call create when page loads
+                        window.addEventListener('load', () => {
+                            config.create(document.getElementById('test-container'), {});
+                        });
+                    }
+                }
+            }
+        };
+    </script>
+
+    <!-- Your visualization code -->
+    <script src="viz.js"></script>
+</body>
+
+</html>
