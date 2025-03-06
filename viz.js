@@ -5,60 +5,224 @@ looker.plugins.visualizations.add({
     options: {},
 
     create: function (element, config) {
+        // Add a loading indicator
+        element.innerHTML = "Loading library... (this may take a minute)";
+
         // Load Three.js
         const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+        script.src = 'https://unpkg.com/three@0.128.0/build/three.min.js';
 
         script.onload = () => {
-            // Create container - FIXED: removed the id and just use the element directly
-            element.style.width = '100%';
-            element.style.height = '400px';
+            // Clear loading message
+            element.innerHTML = '';
 
-            // Setup scene
-            const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xf0f0f0);  // Light gray background
+            element.innerHTML = "Loading model helper...";
 
-            // Setup camera
-            const camera = new THREE.PerspectiveCamera(75, element.clientWidth / element.clientHeight, 0.1, 1000);
-            camera.position.z = 5;
+            // Load GLTFLoader, OrbitControls, and EXRLoader
+            const gltfScript = document.createElement('script');
+            gltfScript.src = 'https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js';
 
-            // Setup renderer
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(element.clientWidth, element.clientHeight);
-            element.appendChild(renderer.domElement);
+            gltfScript.onload = () => {
+                // Load OrbitControls
+                const orbitScript = document.createElement('script');
+                orbitScript.src = 'https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js';
 
-            // Add a cube
-            const geometry = new THREE.BoxGeometry();
-            const material = new THREE.MeshPhongMaterial({
-                color: 0x00ff00,
-                shininess: 60
-            });
-            const cube = new THREE.Mesh(geometry, material);
-            scene.add(cube);
+                orbitScript.onload = () => {
+                    // Load EXRLoader
+                    const exrScript = document.createElement('script');
+                    exrScript.src = 'https://unpkg.com/three@0.128.0/examples/js/loaders/EXRLoader.js';
 
-            // Add lights
-            const light = new THREE.DirectionalLight(0xffffff, 1);
-            light.position.set(1, 1, 1);
-            scene.add(light);
-            scene.add(new THREE.AmbientLight(0x404040));
+                    exrScript.onload = () => {
+                        // Clear any existing content and set up container
+                        element.innerHTML = '';
+                        element.style.width = '100%';
+                        element.style.height = '400px';
+                        //element.style.border = '1px solid red';
+                        element.style.backgroundColor = '#f0f0f0';
+                        element.style.position = 'relative';
 
-            // Animation loop
-            function animate() {
-                requestAnimationFrame(animate);
-                cube.rotation.x += 0.01;
-                cube.rotation.y += 0.01;
-                renderer.render(scene, camera);
-            }
+                        // Setup scene
+                        const scene = new THREE.Scene();
+                        scene.background = new THREE.Color(0xf0f0f0);
 
-            // Handle window resize
-            window.addEventListener('resize', () => {
-                camera.aspect = element.clientWidth / element.clientHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(element.clientWidth, element.clientHeight);
-            });
+                        // Load environment map
+                        const exrLoader = new THREE.EXRLoader();
+                        exrLoader.load(
+                            './envMap.exr',
+                            function (texture) {
+                                texture.mapping = THREE.EquirectangularReflectionMapping;
+                                texture.encoding = THREE.LinearEncoding;
 
-            // Start animation
-            animate();
+                                // Set a solid color background
+                                scene.background = new THREE.Color(0xf0f0f0);  // Light grey background
+
+                                // Keep the environment map for reflections and lighting
+                                scene.environment = texture;
+                            },
+                            function (xhr) {
+                                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+                            },
+                            function (error) {
+                                console.error('Error loading environment map:', error);
+                            }
+                        );
+
+                        // Add grid helper
+                        //const gridHelper = new THREE.GridHelper(10, 10);
+                        //scene.add(gridHelper);
+
+                        // Add axes helper
+                        //const axesHelper = new THREE.AxesHelper(5);
+                        //scene.add(axesHelper);
+
+                        // Needed for testing purposes of reflections
+                        const material = new THREE.MeshStandardMaterial({
+                            color: 0xff0000,
+                            metalness: 0.7,
+                            roughness: 0.2
+                        });
+
+                        // Setup camera with adjusted position
+                        const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+                        camera.position.set(2, 2, 2);
+                        camera.lookAt(0, 0, 0);
+
+                        // Setup renderer
+                        const renderer = new THREE.WebGLRenderer({
+                            antialias: true,
+                            alpha: true,
+                            preserveDrawingBuffer: true
+                        });
+
+                        // Configure renderer
+                        renderer.setSize(element.clientWidth, element.clientHeight);
+                        renderer.setClearColor(0xf0f0f0, 1);
+                        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                        renderer.toneMappingExposure = 2.0;
+                        renderer.outputEncoding = THREE.sRGBEncoding;
+                        renderer.domElement.style.position = 'absolute';
+                        renderer.domElement.style.top = '0';
+                        renderer.domElement.style.left = '0';
+                        renderer.domElement.style.width = '100%';
+                        renderer.domElement.style.height = '100%';
+
+                        // Add renderer to container
+                        element.appendChild(renderer.domElement);
+
+                        // Add OrbitControls
+                        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+                        controls.enableDamping = true;
+                        controls.dampingFactor = 0.05;
+                        controls.minDistance = 2;
+                        controls.maxDistance = 20;
+                        controls.target.set(0, 0, 0);
+
+                        // Add lights
+                        const light = new THREE.DirectionalLight(0xffffff, 1);
+                        light.position.set(1, 1, 1);
+                        scene.add(light);
+                        scene.add(new THREE.AmbientLight(0x404040));
+
+                        let model = null;
+
+                        // Load your model
+                        const loader = new THREE.GLTFLoader();
+                        loader.load(
+                            './key_lowpoly.glb',
+                            function (gltf) {
+                                model = gltf.scene;
+                                scene.add(model);
+
+                                // Apply environment map to all materials in the model
+                                model.traverse((child) => {
+                                    if (child.isMesh) {
+                                        if (child.material) {
+                                            child.material.envMap = scene.environment;
+                                            child.material.envMapIntensity = 1.0;
+                                            child.material.needsUpdate = true;
+                                        }
+                                    }
+                                });
+
+                                const box = new THREE.Box3().setFromObject(model);
+                                const center = box.getCenter(new THREE.Vector3());
+                                const size = box.getSize(new THREE.Vector3());
+
+                                console.log('Model dimensions:', size);
+                                console.log('Model center:', center);
+
+                                const maxDim = Math.max(size.x, size.y, size.z);
+                                const scale = 2 / maxDim;
+                                model.scale.setScalar(scale);
+
+                                model.position.set(0, 0, 0);
+                                model.position.sub(center.multiplyScalar(scale));
+
+                                console.log('Model loaded successfully');
+                                controls.target.copy(model.position);
+                                controls.update();
+                            },
+                            function (xhr) {
+                                const progress = (xhr.loaded / xhr.total * 100);
+                                console.log(progress + '% loaded');
+                            },
+                            function (error) {
+                                console.error('Error loading model:', error);
+                            }
+                        );
+
+                        // Animation loop
+                        function animate() {
+                            requestAnimationFrame(animate);
+                            /*
+                            if (model) {
+                                model.rotation.y += 0.01;
+                            }
+                            */
+                            controls.update();
+                            renderer.render(scene, camera);
+                        }
+
+                        // Handle window resize
+                        const resizeObserver = new ResizeObserver(entries => {
+                            for (let entry of entries) {
+                                const width = entry.contentRect.width;
+                                const height = entry.contentRect.height;
+                                camera.aspect = width / height;
+                                camera.updateProjectionMatrix();
+                                renderer.setSize(width, height);
+                            }
+                        });
+
+                        resizeObserver.observe(element);
+
+                        // Start animation
+                        animate();
+                    };
+
+                    exrScript.onerror = (e) => {
+                        console.error("Failed to load EXRLoader", e);
+                    };
+
+                    document.head.appendChild(exrScript);
+                };
+
+                orbitScript.onerror = (e) => {
+                    console.error("Failed to load OrbitControls", e);
+                };
+
+                document.head.appendChild(orbitScript);
+            };
+
+            gltfScript.onerror = (e) => {
+                console.error("Failed to load GLTFLoader", e);
+            };
+
+            document.head.appendChild(gltfScript);
+        };
+
+        script.onerror = (e) => {
+            console.error("Failed to load Three.js", e);
         };
 
         document.head.appendChild(script);
