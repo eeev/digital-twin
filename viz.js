@@ -35,8 +35,9 @@ looker.plugins.visualizations.add({
                     exrScript.onload = () => {
                         // Clear any existing content and set up container
                         element.innerHTML = '';
-                        element.style.width = '100%';
-                        element.style.height = '400px';
+                        element.style.margin = '-8px';
+                        element.style.width = 'calc(100% + 16px)';
+                        element.style.height = '600px';
                         //element.style.border = '1px solid red';
                         element.style.backgroundColor = '#f0f0f0';
                         element.style.position = 'relative';
