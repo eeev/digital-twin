@@ -48,7 +48,7 @@ looker.plugins.visualizations.add({
                         // Load environment map
                         const exrLoader = new THREE.EXRLoader();
                         exrLoader.load(
-                            './envMap.exr',
+                            'https://eeev.github.io/digital-twin/envMap.exr',
                             function (texture) {
                                 texture.mapping = THREE.EquirectangularReflectionMapping;
                                 texture.encoding = THREE.LinearEncoding;
@@ -128,7 +128,7 @@ looker.plugins.visualizations.add({
                         // Load your model
                         const loader = new THREE.GLTFLoader();
                         loader.load(
-                            './key_lowpoly.glb',
+                            'https://eeev.github.io/digital-twin/key_lowpoly.glb',
                             function (gltf) {
                                 model = gltf.scene;
                                 scene.add(model);
