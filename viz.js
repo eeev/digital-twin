@@ -37,8 +37,8 @@ looker.plugins.visualizations.add({
                         element.innerHTML = '';
                         element.style.margin = '-8px';
                         element.style.width = 'calc(100% + 8px)';
-                        //element.style.height = 'calc(100% + 47px)';
-                        element.style.height = '600px';
+                        element.style.height = 'calc(100% + 47px)';
+                        //element.style.height = '600px';
                         element.style.backgroundColor = '#ffffff';  // Slightly darker gray
                         element.style.position = 'relative';
 
