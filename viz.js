@@ -38,13 +38,12 @@ looker.plugins.visualizations.add({
                         element.style.margin = '-8px';
                         element.style.width = 'calc(100% + 16px)';
                         element.style.height = '600px';
-                        //element.style.border = '1px solid red';
-                        element.style.backgroundColor = '#f0f0f0';
+                        element.style.backgroundColor = '#6a6a6a';  // Slightly darker gray
                         element.style.position = 'relative';
 
                         // Setup scene
                         const scene = new THREE.Scene();
-                        scene.background = new THREE.Color(0xf0f0f0);
+                        scene.background = new THREE.Color(0x6a6a6a);  // Matching darker gray
 
                         // Load environment map
                         const exrLoader = new THREE.EXRLoader();
@@ -55,7 +54,7 @@ looker.plugins.visualizations.add({
                                 texture.encoding = THREE.LinearEncoding;
 
                                 // Set a solid color background
-                                scene.background = new THREE.Color(0xf0f0f0);  // Light grey background
+                                scene.background = new THREE.Color(0x6a6a6a);  // Matching darker gray
 
                                 // Keep the environment map for reflections and lighting
                                 scene.environment = texture;
@@ -97,7 +96,7 @@ looker.plugins.visualizations.add({
 
                         // Configure renderer
                         renderer.setSize(element.clientWidth, element.clientHeight);
-                        renderer.setClearColor(0xf0f0f0, 1);
+                        renderer.setClearColor(0x6a6a6a, 1);  // Matching darker gray
                         renderer.toneMapping = THREE.ACESFilmicToneMapping;
                         renderer.toneMappingExposure = 2.0;
                         renderer.outputEncoding = THREE.sRGBEncoding;
@@ -143,6 +142,8 @@ looker.plugins.visualizations.add({
                                         if (child.material) {
                                             child.material.envMap = scene.environment;
                                             child.material.envMapIntensity = 1.0;
+                                            child.material.metalness = 0.9;  // Increased metallic look
+                                            child.material.roughness = 0.9;  // Reduced roughness for more shine
                                             child.material.needsUpdate = true;
                                         }
                                     }
