@@ -36,14 +36,15 @@ looker.plugins.visualizations.add({
                         // Clear any existing content and set up container
                         element.innerHTML = '';
                         element.style.margin = '-8px';
-                        element.style.width = 'calc(100% + 16px)';
+                        element.style.width = 'calc(100% + 8px)';
+                        //element.style.height = 'calc(100% + 47px)';
                         element.style.height = '600px';
-                        element.style.backgroundColor = '#6a6a6a';  // Slightly darker gray
+                        element.style.backgroundColor = '#ffffff';  // Slightly darker gray
                         element.style.position = 'relative';
 
                         // Setup scene
                         const scene = new THREE.Scene();
-                        scene.background = new THREE.Color(0x6a6a6a);  // Matching darker gray
+                        scene.background = new THREE.Color(0xffffff);  // Matching darker gray
 
                         // Load environment map
                         const exrLoader = new THREE.EXRLoader();
@@ -54,7 +55,7 @@ looker.plugins.visualizations.add({
                                 texture.encoding = THREE.LinearEncoding;
 
                                 // Set a solid color background
-                                scene.background = new THREE.Color(0x6a6a6a);  // Matching darker gray
+                                scene.background = new THREE.Color(0xffffff);  // Matching darker gray
 
                                 // Keep the environment map for reflections and lighting
                                 scene.environment = texture;
@@ -96,9 +97,9 @@ looker.plugins.visualizations.add({
 
                         // Configure renderer
                         renderer.setSize(element.clientWidth, element.clientHeight);
-                        renderer.setClearColor(0x6a6a6a, 1);  // Matching darker gray
+                        renderer.setClearColor(0xffffff, 1);  // Matching darker gray
                         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-                        renderer.toneMappingExposure = 2.0;
+                        renderer.toneMappingExposure = 1.7;
                         renderer.outputEncoding = THREE.sRGBEncoding;
                         renderer.domElement.style.position = 'absolute';
                         renderer.domElement.style.top = '0';
@@ -113,15 +114,18 @@ looker.plugins.visualizations.add({
                         const controls = new THREE.OrbitControls(camera, renderer.domElement);
                         controls.enableDamping = true;
                         controls.dampingFactor = 0.05;
-                        controls.minDistance = 2;
+                        controls.minDistance = 1;
                         controls.maxDistance = 20;
                         controls.target.set(0, 0, 0);
 
                         // Add lights
-                        const light = new THREE.DirectionalLight(0xffffff, 1);
+
+                        const light = new THREE.DirectionalLight(0xffffff, 0.5);
                         light.position.set(1, 1, 1);
                         scene.add(light);
+
                         scene.add(new THREE.AmbientLight(0x404040));
+
 
                         let model = null;
 
@@ -142,8 +146,8 @@ looker.plugins.visualizations.add({
                                         if (child.material) {
                                             child.material.envMap = scene.environment;
                                             child.material.envMapIntensity = 1.0;
-                                            child.material.metalness = 0.9;  // Increased metallic look
-                                            child.material.roughness = 0.9;  // Reduced roughness for more shine
+                                            child.material.metalness = 0.2;  // Increased metallic look
+                                            child.material.roughness = 0.7;  // Reduced roughness for more shine
                                             child.material.needsUpdate = true;
                                         }
                                     }
