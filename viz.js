@@ -129,10 +129,13 @@ looker.plugins.visualizations.add({
                         // Load your model
                         const loader = new THREE.GLTFLoader();
                         loader.load(
-                            'https://eeev.github.io/digital-twin/key_lowpoly.glb',
+                            'https://eeev.github.io/digital-twin/station-a.glb',
                             function (gltf) {
                                 model = gltf.scene;
                                 scene.add(model);
+
+                                // Rotate 90 degrees on X-axis (in radians)
+                                model.rotation.x = Math.PI / 2;
 
                                 // Apply environment map to all materials in the model
                                 model.traverse((child) => {
