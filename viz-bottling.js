@@ -1,6 +1,6 @@
 looker.plugins.visualizations.add({
-    id: "machine_3d_model",
-    label: "3D Machine Model",
+    id: "machine_3d_model_bottling",
+    label: "3D Machine Model: Bottling",
 
     options: {},
 
@@ -132,7 +132,7 @@ looker.plugins.visualizations.add({
                         // Load your model
                         const loader = new THREE.GLTFLoader();
                         loader.load(
-                            'https://eeev.github.io/digital-twin/station-a.glb',
+                            'https://eeev.github.io/digital-twin/station-e-bottling.glb',
                             function (gltf) {
                                 model = gltf.scene;
                                 scene.add(model);
