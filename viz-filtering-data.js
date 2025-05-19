@@ -20,7 +20,7 @@ looker.plugins.visualizations.add({
 
         // Load Three.js (Code bleibt gleich)
         const script = document.createElement('script');
-        script.src = 'https://unpkg.com/three@0.128.0/build/three.min.js';
+        script.src = 'https://unpkg.com/three@0.133.0/build/three.min.js'; // <--- R133 CORE
 
         script.onload = () => {
              // Clear loading message
@@ -29,20 +29,20 @@ looker.plugins.visualizations.add({
 
             // Load GLTFLoader, OrbitControls, EXRLoader (Code bleibt gleich)
             const gltfScript = document.createElement('script');
-            gltfScript.src = 'https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js';
+            gltfScript.src = 'https://unpkg.com/three@0.133.0/examples/js/loaders/GLTFLoader.js'; // <--- R133 EXAMPLES/JS
 
             gltfScript.onload = () => {
                 const orbitScript = document.createElement('script');
-                orbitScript.src = 'https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js';
+                orbitScript.src = 'https://unpkg.com/three@0.133.0/examples/js/controls/OrbitControls.js'; // <--- R133 EXAMPLES/JS
 
                 orbitScript.onload = () => {
                     const exrScript = document.createElement('script');
-                    exrScript.src = 'https://unpkg.com/three@0.128.0/examples/js/loaders/EXRLoader.js';
+                    exrScript.src = 'https://unpkg.com/three@0.133.0/examples/js/loaders/EXRLoader.js'; // <--- R133 EXAMPLES/JS
 
                     exrScript.onload = () => {
                          // --- NEU: FontLoader laden ---
                         const fontScript = document.createElement('script');
-                        fontScript.src = 'https://unpkg.com/three@0.128.0/src/loaders/FontLoader.js';
+                        fontScript.src = 'https://unpkg.com/three@0.133.0/examples/js/loaders/FontLoader.js'; // <--- R133 EXAMPLES/JS
 
                         fontScript.onload = () => {
                              // --- NEU: Schriftart laden ---
@@ -83,40 +83,30 @@ looker.plugins.visualizations.add({
                                         function (error) { console.error('Error loading environment map:', error); }
                                     );
 
-                                    // Add lights (Code bleibt gleich)
                                     const light = new THREE.DirectionalLight(0xffffff, 0.5);
                                     light.position.set(1, 1, 1);
                                     this._scene.add(light);
                                     this._scene.add(new THREE.AmbientLight(0x404040));
 
-                                    // Setup camera - Speichern auf this
                                     this._camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
                                     this._camera.position.set(2, 2, 2);
                                     this._camera.lookAt(0, 0, 0);
 
-                                    // Setup renderer - Speichern auf this
                                     this._renderer = new THREE.WebGLRenderer({
-                                        antialias: true,
-                                        alpha: true,
-                                        preserveDrawingBuffer: true
+                                        antialias: true, alpha: true, preserveDrawingBuffer: true
                                     });
-
-                                    // Configure renderer (Code bleibt gleich)
                                     this._renderer.setSize(element.clientWidth, element.clientHeight);
                                     this._renderer.setClearColor(0xffffff, 1);
                                     this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
                                     this._renderer.toneMappingExposure = 1.7;
                                     this._renderer.outputEncoding = THREE.sRGBEncoding;
-                                    this._renderer.domElement.style.position = 'absolute'; // Muss absolute bleiben
+                                    this._renderer.domElement.style.position = 'absolute';
                                     this._renderer.domElement.style.top = '0';
                                     this._renderer.domElement.style.left = '0';
                                     this._renderer.domElement.style.width = '100%';
                                     this._renderer.domElement.style.height = '100%';
-
-                                    // Add renderer to container (Code bleibt gleich)
                                     element.appendChild(this._renderer.domElement);
 
-                                    // Add OrbitControls - Speichern auf this
                                     this._controls = new THREE.OrbitControls(this._camera, this._renderer.domElement);
                                     this._controls.enableDamping = true;
                                     this._controls.dampingFactor = 0.05;
@@ -124,18 +114,15 @@ looker.plugins.visualizations.add({
                                     this._controls.maxDistance = 20;
                                     this._controls.target.set(0, 0, 0);
 
-                                    // Load your model - Speichern auf this und Flag setzen
-                                    const loader = new THREE.GLTFLoader(); // Erneut instanziieren
+                                    // --- Lade dein Modell (URL bleibt gleich) ---
+                                    const loader = new THREE.GLTFLoader();
                                     loader.load(
-                                        'https://eeev.github.io/digital-twin/station-b-filtering.glb',
+                                        'https://eeev.github.io/digital-twin/station-b-filtering.glb', // <-- Dein Modell
                                         (gltf) => {
                                             this._model = gltf.scene;
                                             this._scene.add(this._model);
-
-                                            // Rotate 90 degrees on X-axis (in radians)
                                             this._model.rotation.x = Math.PI / 2;
 
-                                            // Apply environment map (Code bleibt gleich)
                                             this._model.traverse((child) => {
                                                  if (child.isMesh && child.material) {
                                                     const materials = Array.isArray(child.material) ? child.material : [child.material];
@@ -149,8 +136,6 @@ looker.plugins.visualizations.add({
                                                  }
                                             });
 
-
-                                            // Model positioning and scaling (Code bleibt gleich)
                                             const box = new THREE.Box3().setFromObject(this._model);
                                             const center = box.getCenter(new THREE.Vector3());
                                             const size = box.getSize(new THREE.Vector3());
@@ -158,24 +143,18 @@ looker.plugins.visualizations.add({
                                             const scale = 2 / maxDim;
                                             this._model.scale.setScalar(scale);
                                             this._model.position.set(0, 0, 0);
-                                            // Subtrahiere den skalierten Mittelpunkt, um das Modell am Ursprung zu zentrieren
                                             const scaledCenter = center.clone().multiplyScalar(scale);
                                             this._model.position.sub(scaledCenter);
 
-
                                             console.log('Model loaded successfully');
-                                            // Controls Target aktualisieren, um sich auf das zentrierte Modell zu konzentrieren
-                                            // target.set(0,0,0) ist nun korrekt, wenn das Modell am Ursprung zentriert ist
                                             this._controls.target.set(0,0,0);
                                             this._controls.update();
-
-                                            this._modelLoaded = true; // Modell ist geladen
+                                            this._modelLoaded = true;
                                         },
                                         function (xhr) { const progress = (xhr.loaded / xhr.total * 100); console.log(progress + '% loaded (Model)'); },
                                         function (error) { console.error('Error loading model:', error); }
                                     );
 
-                                    // Animation loop - nutzt die gespeicherten Objekte (Code bleibt gleich)
                                     const animate = () => {
                                         requestAnimationFrame(animate);
                                         this._controls.update();
@@ -183,8 +162,6 @@ looker.plugins.visualizations.add({
                                             this._renderer.render(this._scene, this._camera);
                                         }
                                     };
-
-                                    // Handle window resize - nutzt die gespeicherten Objekte (Code bleibt gleich)
                                     const resizeObserver = new ResizeObserver(entries => {
                                         for (let entry of entries) {
                                             const width = entry.contentRect.width;
@@ -196,21 +173,15 @@ looker.plugins.visualizations.add({
                                             }
                                         }
                                     });
-
                                     resizeObserver.observe(element);
-
-                                    // Start animation
                                     animate();
 
-                                    // --- ENDE DES THREE.JS SETUPS NACH LADEN ALLER RESSOURCEN ---
-
-                                }, // Ende der FontLoader.load Erfolgscallback
+                                }, // Ende FontLoader.load Erfolgscallback
                                 undefined, // Optionaler Progress-Callback für FontLoader
                                 function (error) { console.error('Error loading font:', error); } // FontLoader Fehlercallback
                             ); // Ende FontLoader.load
                         }; // Ende FontLoader.js onload
-
-                        fontScript.onerror = (e) => { console.error("Failed to load FontLoader", e); };
+                        fontScript.onerror = (e) => { console.error("Failed to load FontLoader from unpkg r133", e); };
                         document.head.appendChild(fontScript);
 
                     }; // Ende EXRLoader onload
@@ -231,9 +202,10 @@ looker.plugins.visualizations.add({
     // DIESE Funktion wird von Looker mit den Daten aufgerufen!
     updateAsync: function (data, element, config, queryResponse, details) {
         // Stelle sicher, dass das Modell UND der Font geladen sind, bevor wir 3D Text erstellen
+        // Jetzt basierend auf r133 mit FontLoader
         if (!this._model || !this._modelLoaded || !this._font) {
             console.log("Model or Font not yet loaded, skipping data update logic.");
-             return Promise.resolve(); // Wichtig: Immer einen Promise zurückgeben
+             return Promise.resolve();
         }
 
         console.log("updateAsync wurde aufgerufen!");
@@ -247,7 +219,7 @@ looker.plugins.visualizations.add({
         console.log("Ausgewählte Measures:", measures);
 
 
-        // --- LOGIK: 3D LABEL BASIEREND AUF DEM ERSTEN DATENPUNKT ---
+        // --- LOGIK: 3D LABEL BASIEREND AUF DEM ERSTEN DATENPUNKT (verwendet geladenen Font) ---
 
         let processReadyValue = "N/A"; // Standardwert, falls Daten fehlen
 
@@ -268,10 +240,9 @@ looker.plugins.visualizations.add({
             // Optional: Geometrie und Material freigeben, um Speicher zu sparen
             if (this._statusTextMesh.geometry) this._statusTextMesh.geometry.dispose();
             if (this._statusTextMesh.material) {
-                // Wenn Material ein Array ist
                 if (Array.isArray(this._statusTextMesh.material)) {
                     this._statusTextMesh.material.forEach(mat => mat.dispose());
-                } else { // Einzelnes Material
+                } else {
                     this._statusTextMesh.material.dispose();
                 }
             }
@@ -290,29 +261,39 @@ looker.plugins.visualizations.add({
             // bevelSegments: 5
         });
 
-        // Zentriere die Textgeometrie, sonst wird sie standardmäßig linksbündig erstellt
+        // Zentriere die Textgeometrie
         textGeometry.computeBoundingBox();
         const textCenterX = - 0.5 * (textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x);
-        textGeometry.translate(textCenterX, 0, 0);
+         // Passe Zentrierung für r133 an, falls nötig. In r128 war Y oft vertikal im Font.
+        // Teste ob textGeometry.boundingBox.min/max.y das Minimum/Maximum der Höhe repräsentiert.
+        // const textCenterY = - 0.5 * (textGeometry.boundingBox.max.y - textGeometry.boundingBox.min.y); // Vertikale Zentrierung
+        const textCenterY = 0; // Oft ist die Grundlinie bei Y=0
+
+        const textCenterZ = - 0.5 * (textGeometry.boundingBox.max.z - textGeometry.boundingBox.min.z); // Tiefe zentrieren
+
+
+        // Passe die translate-Achsen an die Ausrichtung deiner FontGeometry an (könnte je nach Font anders sein)
+        // Wenn TextGeometry in der XY-Ebene liegt und Z die Extrusion ist:
+        // textGeometry.translate(textCenterX, textCenterY, 0);
+        // Wenn TextGeometry in der XZ-Ebene liegt und Y die Extrusion ist (wie oft bei gedrehten Modellen):
+         textGeometry.translate(textCenterX, textCenterZ, textCenterY); // X, Extrusion (Z), Vertikale (Y)
 
 
         // Erstelle ein Material für den Text (schwarz wie gewünscht)
-        const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 }); // MeshBasicMaterial wird nicht von Licht beeinflusst
+        const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
 
         // Erstelle das 3D Mesh
         this._statusTextMesh = new THREE.Mesh(textGeometry, textMaterial);
 
-        // Positioniere das Text Mesh im 3D Raum
-        // Annahme: Modell ist um den Ursprung (0,0,0) zentriert und Y ist die vertikale Achse
-        // Positioniere es ein Stück über der Maschine
-        const textHeightAboveModel = 1.5; // Diesen Wert anpassen, damit das Label passend schwebt
-        this._statusTextMesh.position.set(0, textHeightAboveModel, 0); // Position über dem Ursprung
+        // Positioniere das Text Mesh im 3D Raum über dem Modell (Z ist vertikal in Szene)
+        const textHeightAboveModel = 1.0; // Vertikale Position über dem Modellursprung
+        const textPosition = new THREE.Vector3(0, 0, textHeightAboveModel); // Position über dem Ursprung (0,0,0) in der Szene
 
-        // Füge das Text Mesh zur Szene hinzu
         this._scene.add(this._statusTextMesh);
+        this._statusTextMesh.position.copy(textPosition);
 
 
-        // --- ENDE DER 3D LABEL LOGIK ---
+        // --- ENDE 3D LABEL LOGIK (verwendet FontLoader r133) ---
 
 
         // Rendere die Szene neu
@@ -320,8 +301,6 @@ looker.plugins.visualizations.add({
              this._renderer.render(this._scene, this._camera);
         }
 
-
-        // Looker erwartet, dass updateAsync einen Promise zurückgibt
         return Promise.resolve();
     }
 });
