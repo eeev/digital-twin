@@ -42,7 +42,7 @@ looker.plugins.visualizations.add({
                     exrScript.onload = () => {
                          // --- NEU: FontLoader laden ---
                         const fontScript = document.createElement('script');
-                        fontScript.src = 'https://unpkg.com/three@0.128.0/examples/js/loaders/FontLoader.js';
+                        fontScript.src = 'https://unpkg.com/three@0.128.0/src/loaders/FontLoader.js';
 
                         fontScript.onload = () => {
                              // --- NEU: Schriftart laden ---
