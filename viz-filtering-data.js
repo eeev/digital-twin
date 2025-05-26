@@ -23,7 +23,7 @@ looker.plugins.visualizations.add({
         script.src = 'https://unpkg.com/three@0.133.0/build/three.min.js'; // <--- R133 CORE
 
         script.onload = () => {
-             // Clear loading message
+            // Clear loading message
             element.innerHTML = '';
             element.innerHTML = "Loading helpers...";
 
@@ -40,164 +40,213 @@ looker.plugins.visualizations.add({
                     exrScript.src = 'https://unpkg.com/three@0.133.0/examples/js/loaders/EXRLoader.js'; // <--- R133 EXAMPLES/JS
 
                     exrScript.onload = () => {
-                         // --- NEU: FontLoader laden ---
-                        const fontScript = document.createElement('script');
-                        fontScript.src = 'https://unpkg.com/three@0.133.0/examples/js/loaders/FontLoader.js'; // <--- R133 EXAMPLES/JS
+                        // Load TextGeometry
+                        const textGeometryScript = document.createElement('script');
+                        textGeometryScript.src = 'https://unpkg.com/three@0.133.0/examples/js/geometries/TextGeometry.js';
 
-                        fontScript.onload = () => {
-                             // --- NEU: Schriftart laden ---
-                            const fontLoader = new THREE.FontLoader();
-                            // Lädt eine Standard-Schriftart aus den Three.js Beispielen
-                            // Stelle sicher, dass diese URL von Looker aus erreichbar ist
-                            fontLoader.load(
-                                'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
-                                (font) => {
-                                    console.log("Font loaded successfully");
-                                    this._font = font; // Schriftart auf 'this' speichern
+                        textGeometryScript.onload = () => {
+                            // Load FontLoader
+                            const fontScript = document.createElement('script');
+                            fontScript.src = 'https://unpkg.com/three@0.133.0/examples/js/loaders/FontLoader.js';
 
-                                    // --- Rest des Three.js Setups beginnt hier, NACHDEM ALLE HELFER UND FONT GELADEN SIND ---
+                            fontScript.onload = () => {
+                                // Load Font
+                                const fontLoader = new THREE.FontLoader();
+                                fontLoader.load(
+                                    'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
+                                    (font) => {
+                                        console.log("Font loaded successfully");
+                                        this._font = font;
 
-                                    // Clear any existing content and set up container
-                                    element.innerHTML = '';
-                                    element.style.margin = '-8px';
-                                    element.style.width = 'calc(100% + 8px)';
-                                    element.style.height = 'calc(100% + 47px)';
-                                    element.style.backgroundColor = '#ffffff';
-                                    element.style.position = 'relative'; // Beibehalten für Looker-Layout, aber nicht für 3D-Label Positionierung
+                                        // Setup scene
+                                        element.innerHTML = '';
+                                        element.style.margin = '-8px';
+                                        element.style.width = 'calc(100% + 8px)';
+                                        element.style.height = 'calc(100% + 47px)';
+                                        element.style.backgroundColor = '#ffffff';
+                                        element.style.position = 'relative';
 
-                                    // Setup scene - Speichern auf this
-                                    this._scene = new THREE.Scene();
-                                    this._scene.background = new THREE.Color(0xffffff);
+                                        this._scene = new THREE.Scene();
+                                        this._scene.background = new THREE.Color(0xffffff);
 
-                                    // Load environment map (Code bleibt gleich)
-                                    const exrLoader = new THREE.EXRLoader(); // Erneut instanziieren, da im Scope der letzten onload
-                                    exrLoader.load(
-                                        'https://eeev.github.io/digital-twin/envMap.exr',
-                                        (texture) => {
-                                            texture.mapping = THREE.EquirectangularReflectionMapping;
-                                            texture.encoding = THREE.LinearEncoding;
-                                            this._scene.background = new THREE.Color(0xffffff);
-                                            this._scene.environment = texture;
-                                        },
-                                        function (xhr) { console.log((xhr.loaded / xhr.total * 100) + '% loaded (EnvMap)'); },
-                                        function (error) { console.error('Error loading environment map:', error); }
-                                    );
+                                        // Load environment map
+                                        const exrLoader = new THREE.EXRLoader();
+                                        exrLoader.load(
+                                            'https://eeev.github.io/digital-twin/envMap.exr',
+                                            (texture) => {
+                                                texture.mapping = THREE.EquirectangularReflectionMapping;
+                                                texture.encoding = THREE.LinearEncoding;
+                                                this._scene.background = new THREE.Color(0xffffff);
+                                                this._scene.environment = texture;
+                                            },
+                                            function (xhr) { console.log((xhr.loaded / xhr.total * 100) + '% loaded (EnvMap)'); },
+                                            function (error) { console.error('Error loading environment map:', error); }
+                                        );
 
-                                    const light = new THREE.DirectionalLight(0xffffff, 0.5);
-                                    light.position.set(1, 1, 1);
-                                    this._scene.add(light);
-                                    this._scene.add(new THREE.AmbientLight(0x404040));
+                                        const light = new THREE.DirectionalLight(0xffffff, 0.5);
+                                        light.position.set(1, 1, 1);
+                                        this._scene.add(light);
+                                        this._scene.add(new THREE.AmbientLight(0x404040));
 
-                                    this._camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-                                    this._camera.position.set(2, 2, 2);
-                                    this._camera.lookAt(0, 0, 0);
+                                        this._camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+                                        this._camera.position.set(2, 2, 2);
+                                        this._camera.lookAt(0, 0, 0);
 
-                                    this._renderer = new THREE.WebGLRenderer({
-                                        antialias: true, alpha: true, preserveDrawingBuffer: true
-                                    });
-                                    this._renderer.setSize(element.clientWidth, element.clientHeight);
-                                    this._renderer.setClearColor(0xffffff, 1);
-                                    this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
-                                    this._renderer.toneMappingExposure = 1.7;
-                                    this._renderer.outputEncoding = THREE.sRGBEncoding;
-                                    this._renderer.domElement.style.position = 'absolute';
-                                    this._renderer.domElement.style.top = '0';
-                                    this._renderer.domElement.style.left = '0';
-                                    this._renderer.domElement.style.width = '100%';
-                                    this._renderer.domElement.style.height = '100%';
-                                    element.appendChild(this._renderer.domElement);
+                                        this._renderer = new THREE.WebGLRenderer({
+                                            antialias: true, alpha: true, preserveDrawingBuffer: true
+                                        });
+                                        this._renderer.setSize(element.clientWidth, element.clientHeight);
+                                        this._renderer.setClearColor(0xffffff, 1);
+                                        this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                                        this._renderer.toneMappingExposure = 1.7;
+                                        this._renderer.outputEncoding = THREE.sRGBEncoding;
+                                        this._renderer.domElement.style.position = 'absolute';
+                                        this._renderer.domElement.style.top = '0';
+                                        this._renderer.domElement.style.left = '0';
+                                        this._renderer.domElement.style.width = '100%';
+                                        this._renderer.domElement.style.height = '100%';
+                                        element.appendChild(this._renderer.domElement);
 
-                                    this._controls = new THREE.OrbitControls(this._camera, this._renderer.domElement);
-                                    this._controls.enableDamping = true;
-                                    this._controls.dampingFactor = 0.05;
-                                    this._controls.minDistance = 1;
-                                    this._controls.maxDistance = 20;
-                                    this._controls.target.set(0, 0, 0);
+                                        this._controls = new THREE.OrbitControls(this._camera, this._renderer.domElement);
+                                        this._controls.enableDamping = true;
+                                        this._controls.dampingFactor = 0.05;
+                                        this._controls.minDistance = 1;
+                                        this._controls.maxDistance = 20;
+                                        this._controls.target.set(0, 0, 0);
 
-                                    // --- Lade dein Modell (URL bleibt gleich) ---
-                                    const loader = new THREE.GLTFLoader();
-                                    loader.load(
-                                        'https://eeev.github.io/digital-twin/station-b-filtering.glb', // <-- Dein Modell
-                                        (gltf) => {
-                                            this._model = gltf.scene;
-                                            this._scene.add(this._model);
-                                            this._model.rotation.x = Math.PI / 2;
+                                        // Load model
+                                        const loader = new THREE.GLTFLoader();
+                                        loader.load(
+                                            'https://eeev.github.io/digital-twin/station-b-filtering.glb',
+                                            (gltf) => {
+                                                this._model = gltf.scene;
+                                                this._scene.add(this._model);
+                                                this._model.rotation.x = Math.PI / 2;
 
-                                            this._model.traverse((child) => {
-                                                 if (child.isMesh && child.material) {
-                                                    const materials = Array.isArray(child.material) ? child.material : [child.material];
-                                                    materials.forEach(mat => {
-                                                         if (mat.envMap !== undefined) mat.envMap = this._scene.environment;
-                                                         mat.envMapIntensity = 1.0;
-                                                         mat.metalness = 0.2;
-                                                         mat.roughness = 0.7;
-                                                         mat.needsUpdate = true;
-                                                    });
-                                                 }
-                                            });
+                                                this._model.traverse((child) => {
+                                                    if (child.isMesh && child.material) {
+                                                        const materials = Array.isArray(child.material) ? child.material : [child.material];
+                                                        materials.forEach(mat => {
+                                                            if (mat.envMap !== undefined) mat.envMap = this._scene.environment;
+                                                            mat.envMapIntensity = 1.0;
+                                                            mat.metalness = 0.2;
+                                                            mat.roughness = 0.7;
+                                                            mat.needsUpdate = true;
+                                                        });
+                                                    }
+                                                });
 
-                                            const box = new THREE.Box3().setFromObject(this._model);
-                                            const center = box.getCenter(new THREE.Vector3());
-                                            const size = box.getSize(new THREE.Vector3());
-                                            const maxDim = Math.max(size.x, size.y, size.z);
-                                            const scale = 2 / maxDim;
-                                            this._model.scale.setScalar(scale);
-                                            this._model.position.set(0, 0, 0);
-                                            const scaledCenter = center.clone().multiplyScalar(scale);
-                                            this._model.position.sub(scaledCenter);
+                                                const box = new THREE.Box3().setFromObject(this._model);
+                                                const center = box.getCenter(new THREE.Vector3());
+                                                const size = box.getSize(new THREE.Vector3());
+                                                const maxDim = Math.max(size.x, size.y, size.z);
+                                                const scale = 2 / maxDim;
+                                                this._model.scale.setScalar(scale);
+                                                this._model.position.set(0, 0, 0);
+                                                const scaledCenter = center.clone().multiplyScalar(scale);
+                                                this._model.position.sub(scaledCenter);
 
-                                            console.log('Model loaded successfully');
-                                            this._controls.target.set(0,0,0);
+                                                console.log('Model loaded successfully');
+                                                this._controls.target.set(0, 0, 0);
+                                                this._controls.update();
+                                                this._modelLoaded = true;
+
+                                                // Add test label
+                                                this.addTestLabel();
+                                            },
+                                            function (xhr) { const progress = (xhr.loaded / xhr.total * 100); console.log(progress + '% loaded (Model)'); },
+                                            function (error) { console.error('Error loading model:', error); }
+                                        );
+
+                                        const animate = () => {
+                                            requestAnimationFrame(animate);
                                             this._controls.update();
-                                            this._modelLoaded = true;
-                                        },
-                                        function (xhr) { const progress = (xhr.loaded / xhr.total * 100); console.log(progress + '% loaded (Model)'); },
-                                        function (error) { console.error('Error loading model:', error); }
-                                    );
-
-                                    const animate = () => {
-                                        requestAnimationFrame(animate);
-                                        this._controls.update();
-                                        if (this._renderer && this._scene && this._camera) {
-                                            this._renderer.render(this._scene, this._camera);
-                                        }
-                                    };
-                                    const resizeObserver = new ResizeObserver(entries => {
-                                        for (let entry of entries) {
-                                            const width = entry.contentRect.width;
-                                            const height = entry.contentRect.height;
-                                            if (this._camera && this._renderer) {
-                                                this._camera.aspect = width / height;
-                                                this._camera.updateProjectionMatrix();
-                                                this._renderer.setSize(width, height);
+                                            if (this._renderer && this._scene && this._camera) {
+                                                this._renderer.render(this._scene, this._camera);
                                             }
-                                        }
-                                    });
-                                    resizeObserver.observe(element);
-                                    animate();
+                                        };
+                                        const resizeObserver = new ResizeObserver(entries => {
+                                            for (let entry of entries) {
+                                                const width = entry.contentRect.width;
+                                                const height = entry.contentRect.height;
+                                                if (this._camera && this._renderer) {
+                                                    this._camera.aspect = width / height;
+                                                    this._camera.updateProjectionMatrix();
+                                                    this._renderer.setSize(width, height);
+                                                }
+                                            }
+                                        });
+                                        resizeObserver.observe(element);
+                                        animate();
 
-                                }, // Ende FontLoader.load Erfolgscallback
-                                undefined, // Optionaler Progress-Callback für FontLoader
-                                function (error) { console.error('Error loading font:', error); } // FontLoader Fehlercallback
-                            ); // Ende FontLoader.load
-                        }; // Ende FontLoader.js onload
-                        fontScript.onerror = (e) => { console.error("Failed to load FontLoader from unpkg r133", e); };
-                        document.head.appendChild(fontScript);
-
-                    }; // Ende EXRLoader onload
+                                    },
+                                    undefined,
+                                    function (error) { console.error('Error loading font:', error); }
+                                );
+                            };
+                            fontScript.onerror = (e) => { console.error("Failed to load FontLoader", e); };
+                            document.head.appendChild(fontScript);
+                        };
+                        textGeometryScript.onerror = (e) => { console.error("Failed to load TextGeometry", e); };
+                        document.head.appendChild(textGeometryScript);
+                    };
                     exrScript.onerror = (e) => { console.error("Failed to load EXRLoader", e); };
                     document.head.appendChild(exrScript);
-                }; // Ende OrbitControls onload
+                };
                 orbitScript.onerror = (e) => { console.error("Failed to load OrbitControls", e); };
                 document.head.appendChild(orbitScript);
-            }; // Ende GLTFLoader onload
+            };
             gltfScript.onerror = (e) => { console.error("Failed to load GLTFLoader", e); };
             document.head.appendChild(gltfScript);
-        }; // Ende Three.js onload
+        };
         script.onerror = (e) => { console.error("Failed to load Three.js", e); };
         document.head.appendChild(script);
-    }, // Ende create Funktion
+    },
 
+    addTestLabel: function () {
+        if (!this._font) return;
+
+        // Remove existing text mesh if any
+        if (this._statusTextMesh) {
+            this._scene.remove(this._statusTextMesh);
+            if (this._statusTextMesh.geometry) this._statusTextMesh.geometry.dispose();
+            if (this._statusTextMesh.material) {
+                if (Array.isArray(this._statusTextMesh.material)) {
+                    this._statusTextMesh.material.forEach(mat => mat.dispose());
+                } else {
+                    this._statusTextMesh.material.dispose();
+                }
+            }
+            this._statusTextMesh = null;
+        }
+
+        // Create test label
+        const textGeometry = new THREE.TextGeometry('Test Label', {
+            font: this._font,
+            size: 0.2,
+            height: 0.02,
+            curveSegments: 12
+        });
+
+        // Center the text
+        textGeometry.computeBoundingBox();
+        const textCenterX = -0.5 * (textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x);
+        const textCenterY = 0;
+        const textCenterZ = -0.5 * (textGeometry.boundingBox.max.z - textGeometry.boundingBox.min.z);
+        textGeometry.translate(textCenterX, textCenterZ, textCenterY);
+
+        // Create material and mesh
+        const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        this._statusTextMesh = new THREE.Mesh(textGeometry, textMaterial);
+
+        // Position the text
+        const textHeightAboveModel = 1.0;
+        const textPosition = new THREE.Vector3(0, 0, textHeightAboveModel);
+        this._statusTextMesh.position.copy(textPosition);
+
+        // Add to scene
+        this._scene.add(this._statusTextMesh);
+    },
 
     // DIESE Funktion wird von Looker mit den Daten aufgerufen!
     updateAsync: function (data, element, config, queryResponse, details) {
@@ -205,7 +254,7 @@ looker.plugins.visualizations.add({
         // Jetzt basierend auf r133 mit FontLoader
         if (!this._model || !this._modelLoaded || !this._font) {
             console.log("Model or Font not yet loaded, skipping data update logic.");
-             return Promise.resolve();
+            return Promise.resolve();
         }
 
         console.log("updateAsync wurde aufgerufen!");
@@ -225,10 +274,10 @@ looker.plugins.visualizations.add({
 
         // Prüfen, ob Daten vorhanden sind und die erwartete Struktur haben
         if (data && data.length > 0 && data[0]["digital_twin_filtration.payload_boolean"]) {
-             // Greife auf den Wert des ersten Elements im Array für das spezifische Feld zu
+            // Greife auf den Wert des ersten Elements im Array für das spezifische Feld zu
             processReadyValue = data[0]["digital_twin_filtration.payload_boolean"].value;
         } else {
-             console.warn("Daten für 'digital_twin_filtration.payload_boolean' im ersten Row nicht gefunden oder Daten sind leer.");
+            console.warn("Daten für 'digital_twin_filtration.payload_boolean' im ersten Row nicht gefunden oder Daten sind leer.");
         }
 
         // Text für das Label erstellen
@@ -264,7 +313,7 @@ looker.plugins.visualizations.add({
         // Zentriere die Textgeometrie
         textGeometry.computeBoundingBox();
         const textCenterX = - 0.5 * (textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x);
-         // Passe Zentrierung für r133 an, falls nötig. In r128 war Y oft vertikal im Font.
+        // Passe Zentrierung für r133 an, falls nötig. In r128 war Y oft vertikal im Font.
         // Teste ob textGeometry.boundingBox.min/max.y das Minimum/Maximum der Höhe repräsentiert.
         // const textCenterY = - 0.5 * (textGeometry.boundingBox.max.y - textGeometry.boundingBox.min.y); // Vertikale Zentrierung
         const textCenterY = 0; // Oft ist die Grundlinie bei Y=0
@@ -276,7 +325,7 @@ looker.plugins.visualizations.add({
         // Wenn TextGeometry in der XY-Ebene liegt und Z die Extrusion ist:
         // textGeometry.translate(textCenterX, textCenterY, 0);
         // Wenn TextGeometry in der XZ-Ebene liegt und Y die Extrusion ist (wie oft bei gedrehten Modellen):
-         textGeometry.translate(textCenterX, textCenterZ, textCenterY); // X, Extrusion (Z), Vertikale (Y)
+        textGeometry.translate(textCenterX, textCenterZ, textCenterY); // X, Extrusion (Z), Vertikale (Y)
 
 
         // Erstelle ein Material für den Text (schwarz wie gewünscht)
@@ -298,7 +347,7 @@ looker.plugins.visualizations.add({
 
         // Rendere die Szene neu
         if (this._renderer && this._scene && this._camera) {
-             this._renderer.render(this._scene, this._camera);
+            this._renderer.render(this._scene, this._camera);
         }
 
         return Promise.resolve();
