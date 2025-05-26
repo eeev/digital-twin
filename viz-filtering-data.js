@@ -13,6 +13,7 @@ looker.plugins.visualizations.add({
     _modelLoaded: false, // Flag um zu prüfen, ob das Modell geladen ist
     _font: null, // Das geladene Three.js Font Objekt
     _statusTextMesh: null, // Referenz auf das 3D Text Mesh
+    _labels: {}, // Store all labels here
 
     create: function (element, config) {
         // Add a loading indicator
@@ -69,10 +70,14 @@ looker.plugins.visualizations.add({
                                         this._scene = new THREE.Scene();
                                         this._scene.background = new THREE.Color(0xffffff);
 
+                                        // Add axes helper
+                                        const axesHelper = new THREE.AxesHelper(5);
+                                        this._scene.add(axesHelper);
+
                                         // Load environment map
                                         const exrLoader = new THREE.EXRLoader();
                                         exrLoader.load(
-                                            'https://eeev.github.io/digital-twin/envMap.exr',
+                                            'envMap.exr',
                                             (texture) => {
                                                 texture.mapping = THREE.EquirectangularReflectionMapping;
                                                 texture.encoding = THREE.LinearEncoding;
@@ -110,19 +115,20 @@ looker.plugins.visualizations.add({
                                         this._controls = new THREE.OrbitControls(this._camera, this._renderer.domElement);
                                         this._controls.enableDamping = true;
                                         this._controls.dampingFactor = 0.05;
-                                        this._controls.minDistance = 1;
-                                        this._controls.maxDistance = 20;
+                                        this._controls.minDistance = 0.5;
+                                        this._controls.maxDistance = 4;
                                         this._controls.target.set(0, 0, 0);
 
                                         // Load model
                                         const loader = new THREE.GLTFLoader();
                                         loader.load(
-                                            'https://eeev.github.io/digital-twin/station-b-filtering.glb',
+                                            'station-b-filtering-real.glb',
                                             (gltf) => {
                                                 this._model = gltf.scene;
                                                 this._scene.add(this._model);
-                                                this._model.rotation.x = Math.PI / 2;
+                                                //this._model.rotation.x = Math.PI / 2;
 
+                                                /**
                                                 this._model.traverse((child) => {
                                                     if (child.isMesh && child.material) {
                                                         const materials = Array.isArray(child.material) ? child.material : [child.material];
@@ -135,6 +141,7 @@ looker.plugins.visualizations.add({
                                                         });
                                                     }
                                                 });
+                                                 */
 
                                                 const box = new THREE.Box3().setFromObject(this._model);
                                                 const center = box.getCenter(new THREE.Vector3());
@@ -203,28 +210,28 @@ looker.plugins.visualizations.add({
         document.head.appendChild(script);
     },
 
-    addTestLabel: function () {
-        if (!this._font) return;
+    // Helper function to create a label
+    createLabel: function (id, text, position, size = 0.1, height = 0.02) {
+        if (!this._font) return null;
 
-        // Remove existing text mesh if any
-        if (this._statusTextMesh) {
-            this._scene.remove(this._statusTextMesh);
-            if (this._statusTextMesh.geometry) this._statusTextMesh.geometry.dispose();
-            if (this._statusTextMesh.material) {
-                if (Array.isArray(this._statusTextMesh.material)) {
-                    this._statusTextMesh.material.forEach(mat => mat.dispose());
+        // Remove existing label if it exists
+        if (this._labels[id]) {
+            this._scene.remove(this._labels[id]);
+            if (this._labels[id].geometry) this._labels[id].geometry.dispose();
+            if (this._labels[id].material) {
+                if (Array.isArray(this._labels[id].material)) {
+                    this._labels[id].material.forEach(mat => mat.dispose());
                 } else {
-                    this._statusTextMesh.material.dispose();
+                    this._labels[id].material.dispose();
                 }
             }
-            this._statusTextMesh = null;
         }
 
-        // Create test label
-        const textGeometry = new THREE.TextGeometry('Test Label', {
+        // Create text geometry
+        const textGeometry = new THREE.TextGeometry(text, {
             font: this._font,
-            size: 0.2,
-            height: 0.02,
+            size: size,
+            height: height,
             curveSegments: 12
         });
 
@@ -237,15 +244,96 @@ looker.plugins.visualizations.add({
 
         // Create material and mesh
         const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        this._statusTextMesh = new THREE.Mesh(textGeometry, textMaterial);
+        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
 
-        // Position the text
-        const textHeightAboveModel = 1.0;
-        const textPosition = new THREE.Vector3(0, 0, textHeightAboveModel);
-        this._statusTextMesh.position.copy(textPosition);
+        // Set position and rotation
+        textMesh.position.copy(position);
+        textMesh.rotation.y = Math.PI / 2; // Rotate 90 degrees around Y axis
 
-        // Add to scene
-        this._scene.add(this._statusTextMesh);
+        // Store the label
+        this._labels[id] = textMesh;
+        this._scene.add(textMesh);
+
+        return textMesh;
+    },
+
+    // Helper function to update label text and color
+    updateLabel: function (id, text, color = 0x000000, height = 0.02, size = 0.05) {
+        if (!this._labels[id]) return;
+
+        // Remove old mesh
+        this._scene.remove(this._labels[id]);
+        if (this._labels[id].geometry) this._labels[id].geometry.dispose();
+        if (this._labels[id].material) {
+            if (Array.isArray(this._labels[id].material)) {
+                this._labels[id].material.forEach(mat => mat.dispose());
+            } else {
+                this._labels[id].material.dispose();
+            }
+        }
+
+        // Create new geometry with updated text
+        const textGeometry = new THREE.TextGeometry(text, {
+            font: this._font,
+            size: size,
+            height: height,
+            curveSegments: 12
+        });
+
+        // Center the text
+        textGeometry.computeBoundingBox();
+        const textCenterX = -0.5 * (textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x);
+        const textCenterY = 0;
+        const textCenterZ = -0.5 * (textGeometry.boundingBox.max.z - textGeometry.boundingBox.min.z);
+        textGeometry.translate(textCenterX, textCenterZ, textCenterY);
+
+        // Create new material with emission
+        const textMaterial = new THREE.MeshPhongMaterial({
+            color: color,
+            emissive: color,
+            emissiveIntensity: 0.5,
+            shininess: 0
+        });
+        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+
+        // Copy position and rotation from old mesh
+        textMesh.position.copy(this._labels[id].position);
+        textMesh.rotation.copy(this._labels[id].rotation);
+
+        // Update stored label
+        this._labels[id] = textMesh;
+        this._scene.add(textMesh);
+    },
+
+    addTestLabel: function () {
+        // Prozess
+        this.createLabel('status', 'Process Ready: No', new THREE.Vector3(0, 1.0, 0), 0.1, 0.02);
+        // Durchfluss
+        this.createLabel('flow rate', 'Flow Rate: 256 l/hr', new THREE.Vector3(0.6, 0.05, 0.2), 0.06, 0.01);
+        // Motoren
+        this.createLabel('mb7', 'MB7: Off', new THREE.Vector3(-0.2, 0.10, 0.2), 0.06, 0.01);
+        // Füllstandssensoren
+        this.createLabel('bg2', 'BG2', new THREE.Vector3(-0.15, -0.20, 0.55), 0.06, 0.01);
+        this.createLabel('bg3', 'BG3', new THREE.Vector3(-0.15, -0.7, 0.55), 0.06, 0.01);
+        this.createLabel('bg4', 'BG4', new THREE.Vector3(-0.15, -0.20, -0.75), 0.06, 0.01);
+        this.createLabel('bg5', 'BG5', new THREE.Vector3(-0.15, -0.7, -0.75), 0.06, 0.01);
+        // Motorpumpen
+        this.createLabel('ma2', 'MA2: Off', new THREE.Vector3(0.4, -0.75, 0.2), 0.06, 0.01);
+        this.createLabel('ma3', 'MA3: Off', new THREE.Vector3(0.4, -0.75, -0.3), 0.06, 0.01);
+        // Valves
+        this.createLabel('mb6', 'MB6: Closed', new THREE.Vector3(0.4, -0.4, -0.4), 0.06, 0.01);
+        this.createLabel('mb5', 'MB5: Off', new THREE.Vector3(0.55, 0.50, 0.45), 0.06, 0.01);
+        this.createLabel('mb4', 'MB4: Off', new THREE.Vector3(0.55, 0.50, -0.05), 0.06, 0.01);
+
+        // Example of how to update labels later:
+        /*
+        // Update text and color with emission
+        this.updateLabel('status', 'Process Ready: Yes', 0x00ff00, 0.02); // Green with emission
+        this.updateLabel('mb7', 'MB7: On', 0x00ff00, 0.01); // Green with emission
+        this.updateLabel('ma2', 'MA2: On', 0x00ff00, 0.01); // Green with emission
+        this.updateLabel('mb6', 'MB6: Open', 0xff0000, 0.01); // Red with emission
+        */
+        //this.updateLabel('mb6', 'MB6: Closed', 0xff0000, 0.01, 0.06); // Red with emission, maintaining size
     },
 
     // DIESE Funktion wird von Looker mit den Daten aufgerufen!
@@ -349,6 +437,20 @@ looker.plugins.visualizations.add({
         if (this._renderer && this._scene && this._camera) {
             this._renderer.render(this._scene, this._camera);
         }
+
+        // Example of how to update labels based on data:
+        /*
+        if (data && data.length > 0) {
+            const processReady = data[0]["digital_twin_filtration.payload_boolean"].value;
+            const pressure = data[0]["pressure"].value;
+            const temperature = data[0]["temperature"].value;
+
+            // Update labels with new values
+            this.updateLabel('status', `Process Ready: ${processReady}`, processReady ? 0x00ff00 : 0xff0000);
+            this.updateLabel('pressure', `Pressure: ${pressure} bar`, 0x000000);
+            this.updateLabel('temperature', `Temp: ${temperature}°C`, 0x000000);
+        }
+        */
 
         return Promise.resolve();
     }

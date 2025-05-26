@@ -3,10 +3,36 @@
 
 <head>
     <title>3D Model Test</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+        }
+
+        #test-container {
+            width: 800px;
+            height: 600px !important;
+            min-height: 600px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+    </style>
 </head>
 
 <body>
-    <div id="test-container" style="width: 800px; height: 600px;"></div>
+    <div id="test-container"></div>
 
     <!-- Mock Looker object -->
     <script>
@@ -14,9 +40,31 @@
             plugins: {
                 visualizations: {
                     add: function (config) {
+                        // Store the config for later use
+                        window.vizConfig = config;
+
                         // Call create when page loads
                         window.addEventListener('load', () => {
+                            // Create the visualization
                             config.create(document.getElementById('test-container'), {});
+
+                            // Mock some data for testing
+                            const mockData = [{
+                                "digital_twin_filtration.payload_boolean": {
+                                    value: "Test Value"
+                                }
+                            }];
+
+                            // Mock query response
+                            const mockQueryResponse = {
+                                fields: {
+                                    dimension_like: [],
+                                    measure_like: []
+                                }
+                            };
+
+                            // Call updateAsync with mock data
+                            config.updateAsync(mockData, document.getElementById('test-container'), {}, mockQueryResponse, {});
                         });
                     }
                 }
@@ -25,7 +73,7 @@
     </script>
 
     <!-- Your visualization code -->
-    <script src="viz.js"></script>
+    <script src="viz-filtering-data.js"></script>
 </body>
 
 </html>
