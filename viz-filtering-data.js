@@ -72,12 +72,12 @@ looker.plugins.visualizations.add({
 
                                         // Add axes helper
                                         const axesHelper = new THREE.AxesHelper(5);
-                                        this._scene.add(axesHelper);
+                                        //this._scene.add(axesHelper);
 
                                         // Load environment map
                                         const exrLoader = new THREE.EXRLoader();
                                         exrLoader.load(
-                                            'envMap.exr',
+                                            'https://eeev.github.io/digital-twin/envMap.exr',
                                             (texture) => {
                                                 texture.mapping = THREE.EquirectangularReflectionMapping;
                                                 texture.encoding = THREE.LinearEncoding;
@@ -122,7 +122,7 @@ looker.plugins.visualizations.add({
                                         // Load model
                                         const loader = new THREE.GLTFLoader();
                                         loader.load(
-                                            'station-b-filtering-real.glb',
+                                            'https://eeev.github.io/digital-twin/station-b-filtering-real.glb',
                                             (gltf) => {
                                                 this._model = gltf.scene;
                                                 this._scene.add(this._model);
