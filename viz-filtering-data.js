@@ -322,8 +322,8 @@ looker.plugins.visualizations.add({
         this.createLabel('ma3', 'MA3: Off', new THREE.Vector3(0.4, -0.75, -0.3), 0.06, 0.01);
         // Valves
         this.createLabel('mb6', 'MB6: Closed', new THREE.Vector3(0.4, -0.4, -0.4), 0.06, 0.01);
-        this.createLabel('mb5', 'MB5: Off', new THREE.Vector3(0.55, 0.50, 0.45), 0.06, 0.01);
-        this.createLabel('mb4', 'MB4: Off', new THREE.Vector3(0.55, 0.50, -0.05), 0.06, 0.01);
+        //this.createLabel('mb5', 'MB5: Off', new THREE.Vector3(0.55, 0.50, 0.45), 0.06, 0.01);
+        this.createLabel('mb4', 'MB4/5', new THREE.Vector3(0.55, 0.50, 0.25), 0.06, 0.01);
 
         // Example of how to update labels later:
         /*
@@ -336,45 +336,119 @@ looker.plugins.visualizations.add({
         //this.updateLabel('mb6', 'MB6: Closed', 0xff0000, 0.01, 0.06); // Red with emission, maintaining size
     },
 
+    // Helper function to unwrap sensor data from queryResponse
+    unwrapSensorData: function (queryResponse) {
+        const sensorMap = new Map();
+
+        // Check if queryResponse has the expected structure
+        if (!queryResponse || !queryResponse.data || !Array.isArray(queryResponse.data)) {
+            console.warn("queryResponse.data is not available or not an array");
+            return sensorMap;
+        }
+
+        // Process each sensor reading
+        queryResponse.data.forEach((sensorReading, index) => {
+            try {
+                // Extract tag name and boolean value
+                const tagName = sensorReading["digital_twin_filtration.tag_name"]?.value;
+                const booleanValue = sensorReading["digital_twin_filtration.payload_boolean"]?.value;
+
+                if (tagName && booleanValue !== undefined) {
+                    sensorMap.set(tagName, booleanValue);
+                    console.log(`Sensor ${index}: ${tagName} = ${booleanValue}`);
+                } else {
+                    console.warn(`Sensor reading ${index} missing required fields:`, sensorReading);
+                }
+            } catch (error) {
+                console.error(`Error processing sensor reading ${index}:`, error, sensorReading);
+            }
+        });
+
+        console.log("Unwrapped sensor data:", sensorMap);
+        return sensorMap;
+    },
+
     // DIESE Funktion wird von Looker mit den Daten aufgerufen!
     updateAsync: function (data, element, config, queryResponse, details) {
         // Stelle sicher, dass das Modell UND der Font geladen sind, bevor wir 3D Text erstellen
-        // Jetzt basierend auf r133 mit FontLoader
         if (!this._model || !this._modelLoaded || !this._font) {
             console.log("Model or Font not yet loaded, skipping data update logic.");
             return Promise.resolve();
         }
 
         console.log("updateAsync wurde aufgerufen!");
-        console.log("Looker Daten (Parameter 'data'):", data);
-        console.log("Looker Abfrage-Metadaten (Parameter 'queryResponse'):", queryResponse);
+        console.log("Looker queryResponse:", queryResponse);
 
-        // Finde die relevanten Felder (Code bleibt fürs Debugging)
-        const dimensions = queryResponse.fields.dimension_like;
-        const measures = queryResponse.fields.measure_like;
-        console.log("Ausgewählte Dimensionen:", dimensions);
-        console.log("Ausgewählte Measures:", measures);
+        // Unwrap sensor data from queryResponse
+        const sensorData = this.unwrapSensorData(queryResponse);
 
-
-        // --- LOGIK: 3D LABEL BASIEREND AUF DEM ERSTEN DATENPUNKT (verwendet geladenen Font) ---
-
-        let processReadyValue = "N/A"; // Standardwert, falls Daten fehlen
-
-        // Prüfen, ob Daten vorhanden sind und die erwartete Struktur haben
-        if (data && data.length > 0 && data[0]["digital_twin_filtration.payload_boolean"]) {
-            // Greife auf den Wert des ersten Elements im Array für das spezifische Feld zu
-            processReadyValue = data[0]["digital_twin_filtration.payload_boolean"].value;
-        } else {
-            console.warn("Daten für 'digital_twin_filtration.payload_boolean' im ersten Row nicht gefunden oder Daten sind leer.");
+        // If no sensor data available, skip update
+        if (sensorData.size === 0) {
+            console.warn("No sensor data available, skipping label updates");
+            return Promise.resolve();
         }
 
-        // Text für das Label erstellen
-        const labelText = `Process Ready: ${processReadyValue}`;
+        // --- UPDATE LABELS BASED ON SENSOR DATA ---
 
-        // Entferne das alte Text Mesh, falls es existiert
+        // You can now easily map sensor tag names to your labels:
+
+        sensorData.forEach((value, tagName) => {
+
+            // Process Ready example
+            if (tagName.includes('ProcRdy')) {
+                const color = (value === 'Yes') ? 0x00ff00 : 0xff0000;
+                this.updateLabel('status', `Process Ready: ${value}`, color);
+            } else if (tagName.includes('MA7')) {
+                const color = (value === 'Yes') ? 0x00ff00 : 0xff0000;
+                this.updateLabel('mb7', `MB7: ${value === 'Yes' ? 'On' : 'Off'}`, color);
+            } else if (tagName.includes('BG4-SH')) {
+                const color = (value === 'Yes') ? 0x00ff00 : 0xff0000;
+                this.updateLabel('bg4', "BG4", color);
+            } else if (tagName.includes('BG5-SL')) {
+                const color = (value === 'Yes') ? 0x00ff00 : 0xff0000;
+                this.updateLabel('bg5', "BG5", color);
+            } else if (tagName.includes('BG2-SH')) {
+                const color = (value === 'Yes') ? 0x00ff00 : 0xff0000;
+                this.updateLabel('bg2', "BG2", color);
+            } else if (tagName.includes('BG3-SL')) {
+                const color = (value === 'Yes') ? 0x00ff00 : 0xff0000;
+                this.updateLabel('bg3', "BG3", color);
+            } else if (tagName.includes('MA2')) {
+                const color = (value === 'Yes') ? 0x00ff00 : 0xff0000;
+                this.updateLabel('ma2', `MA2: ${value === 'Yes' ? 'On' : 'Off'}`, color);
+            } else if (tagName.includes('MA3')) {
+                const color = (value === 'Yes') ? 0x00ff00 : 0xff0000;
+                this.updateLabel('ma3', `MA3: ${value === 'Yes' ? 'On' : 'Off'}`, color);
+            } else if (tagName.includes('MB6')) {
+                const color = (value === 'Yes') ? 0x00ff00 : 0xff0000;
+                this.updateLabel('mb6', `MB6: ${value === 'Yes' ? 'Open' : 'Closed'}`, color);
+            } else if (tagName.includes('MB4_MB5')) {
+                const color = (value === 'Yes') ? 0x00ff00 : 0xff0000;
+                this.updateLabel('mb4', "MB4/5", color);
+            }
+
+            // Add more mappings here based on your actual sensor tag names
+            // Examples of what the mappings might look like:
+            /*
+            else if (tagName.includes('MB7')) {
+                const color = (value === 'Yes') ? 0x00ff00 : 0xff0000;
+                this.updateLabel('mb7', `MB7: ${value === 'Yes' ? 'On' : 'Off'}`, color);
+            }
+            else if (tagName.includes('MA2')) {
+                const color = (value === 'Yes') ? 0x00ff00 : 0xff0000;
+                this.updateLabel('ma2', `MA2: ${value === 'Yes' ? 'On' : 'Off'}`, color);
+            }
+            else if (tagName.includes('MB6')) {
+                const color = (value === 'Yes') ? 0x00ff00 : 0xff0000;
+                this.updateLabel('mb6', `MB6: ${value === 'Yes' ? 'Open' : 'Closed'}`, color);
+            }
+            // Add more sensor mappings here...
+            */
+        });
+
+        // Remove the old manual text mesh creation since we're using the label system now
         if (this._statusTextMesh) {
             this._scene.remove(this._statusTextMesh);
-            // Optional: Geometrie und Material freigeben, um Speicher zu sparen
             if (this._statusTextMesh.geometry) this._statusTextMesh.geometry.dispose();
             if (this._statusTextMesh.material) {
                 if (Array.isArray(this._statusTextMesh.material)) {
@@ -386,71 +460,10 @@ looker.plugins.visualizations.add({
             this._statusTextMesh = null;
         }
 
-        // Erstelle neue 3D Text Geometrie
-        const textGeometry = new THREE.TextGeometry(labelText, {
-            font: this._font, // Geladene Schriftart verwenden
-            size: 0.2, // Größe des Textes (an Modellgröße anpassen)
-            height: 0.02, // Dicke des Textes (Extrusion)
-            curveSegments: 12, // Detailgrad der Kurven
-            // bevelEnabled: true, // Optional: Kanten abschrägen
-            // bevelThickness: 0.01,
-            // bevelSize: 0.01,
-            // bevelSegments: 5
-        });
-
-        // Zentriere die Textgeometrie
-        textGeometry.computeBoundingBox();
-        const textCenterX = - 0.5 * (textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x);
-        // Passe Zentrierung für r133 an, falls nötig. In r128 war Y oft vertikal im Font.
-        // Teste ob textGeometry.boundingBox.min/max.y das Minimum/Maximum der Höhe repräsentiert.
-        // const textCenterY = - 0.5 * (textGeometry.boundingBox.max.y - textGeometry.boundingBox.min.y); // Vertikale Zentrierung
-        const textCenterY = 0; // Oft ist die Grundlinie bei Y=0
-
-        const textCenterZ = - 0.5 * (textGeometry.boundingBox.max.z - textGeometry.boundingBox.min.z); // Tiefe zentrieren
-
-
-        // Passe die translate-Achsen an die Ausrichtung deiner FontGeometry an (könnte je nach Font anders sein)
-        // Wenn TextGeometry in der XY-Ebene liegt und Z die Extrusion ist:
-        // textGeometry.translate(textCenterX, textCenterY, 0);
-        // Wenn TextGeometry in der XZ-Ebene liegt und Y die Extrusion ist (wie oft bei gedrehten Modellen):
-        textGeometry.translate(textCenterX, textCenterZ, textCenterY); // X, Extrusion (Z), Vertikale (Y)
-
-
-        // Erstelle ein Material für den Text (schwarz wie gewünscht)
-        const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-
-        // Erstelle das 3D Mesh
-        this._statusTextMesh = new THREE.Mesh(textGeometry, textMaterial);
-
-        // Positioniere das Text Mesh im 3D Raum über dem Modell (Z ist vertikal in Szene)
-        const textHeightAboveModel = 1.0; // Vertikale Position über dem Modellursprung
-        const textPosition = new THREE.Vector3(0, 0, textHeightAboveModel); // Position über dem Ursprung (0,0,0) in der Szene
-
-        this._scene.add(this._statusTextMesh);
-        this._statusTextMesh.position.copy(textPosition);
-
-
-        // --- ENDE 3D LABEL LOGIK (verwendet FontLoader r133) ---
-
-
-        // Rendere die Szene neu
+        // Render the scene
         if (this._renderer && this._scene && this._camera) {
             this._renderer.render(this._scene, this._camera);
         }
-
-        // Example of how to update labels based on data:
-        /*
-        if (data && data.length > 0) {
-            const processReady = data[0]["digital_twin_filtration.payload_boolean"].value;
-            const pressure = data[0]["pressure"].value;
-            const temperature = data[0]["temperature"].value;
-
-            // Update labels with new values
-            this.updateLabel('status', `Process Ready: ${processReady}`, processReady ? 0x00ff00 : 0xff0000);
-            this.updateLabel('pressure', `Pressure: ${pressure} bar`, 0x000000);
-            this.updateLabel('temperature', `Temp: ${temperature}°C`, 0x000000);
-        }
-        */
 
         return Promise.resolve();
     }
