@@ -15,6 +15,14 @@ looker.plugins.visualizations.add({
     _statusTextMesh: null, // Referenz auf das 3D Text Mesh
     _labels: {}, // Store all labels here
     _labelProperties: {}, // Store original label properties (size, height, position, rotation)
+    _containerMesh: null, // Reference to the first water container mesh
+    _containerBounds: null, // Bounding box info for water level calculations
+    _waterMaterial: null, // Water shader material
+    _sensorStates: null, // Current sensor readings
+    _containerMesh2: null, // Reference to the second water container mesh
+    _containerBounds2: null, // Bounding box info for second container
+    _waterMaterial2: null, // Second water shader material
+    _sensorStates2: null, // Second container sensor readings
 
     create: function (element, config) {
         // Add a loading indicator
@@ -73,7 +81,7 @@ looker.plugins.visualizations.add({
 
                                         // Add axes helper
                                         const axesHelper = new THREE.AxesHelper(5);
-                                        //this._scene.add(axesHelper);
+                                        this._scene.add(axesHelper);
 
                                         // Load environment map
                                         const exrLoader = new THREE.EXRLoader();
@@ -104,7 +112,7 @@ looker.plugins.visualizations.add({
                                         this._renderer.setSize(element.clientWidth, element.clientHeight);
                                         this._renderer.setClearColor(0xffffff, 1);
                                         this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
-                                        this._renderer.toneMappingExposure = 1.7;
+                                        this._renderer.toneMappingExposure = 1.666;
                                         this._renderer.outputEncoding = THREE.sRGBEncoding;
                                         this._renderer.domElement.style.position = 'absolute';
                                         this._renderer.domElement.style.top = '0';
@@ -159,21 +167,8 @@ looker.plugins.visualizations.add({
                                                 this._controls.update();
                                                 this._modelLoaded = true;
 
-                                                // Add mirror sphere to test environment map
-                                                /*
-                                                const sphereGeometry = new THREE.SphereGeometry(0.15, 32, 32);
-                                                const sphereMaterial = new THREE.MeshStandardMaterial({
-                                                    color: 0xffffff,
-                                                    metalness: 1.0,
-                                                    roughness: 0.0,
-                                                    envMap: this._scene.environment,
-                                                    envMapIntensity: 1.0
-                                                });
-                                                const mirrorSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-                                                mirrorSphere.position.set(1.5, 0, 0); // Position to the right of the model
-                                                this._scene.add(mirrorSphere);
-                                                console.log('Mirror sphere added to test environment map');
-                                                */
+                                                // Test: Find and modify both water container meshes
+                                                this.setupWaterContainers();
 
                                                 // Add test label
                                                 this.addTestLabel();
@@ -333,6 +328,251 @@ looker.plugins.visualizations.add({
         this._scene.add(textMesh);
     },
 
+    // Setup both water container meshes
+    setupWaterContainers: function () {
+        if (!this._model) {
+            console.error("Model not loaded yet");
+            return;
+        }
+
+        let container1 = null;
+        let container2 = null;
+
+        // Traverse the model to find both container meshes
+        console.log("Searching for container meshes...");
+        this._model.traverse((child) => {
+            if (child.isMesh) {
+                console.log("Found mesh:", child.name);
+                if (child.name === "00696706") {
+                    container1 = child;
+                    console.log("Found container 1: '00696706'");
+                } else if (child.name === "00696706001") {
+                    container2 = child;
+                    console.log("Found container 2: '00696706.001'");
+                }
+            }
+        });
+
+        // Setup first container (BG2/BG3 sensors)
+        if (container1) {
+            this.setupContainer1(container1);
+        } else {
+            console.warn("Container '00696706' not found");
+        }
+
+        // Setup second container (BG4/BG5 sensors)
+        if (container2) {
+            this.setupContainer2(container2);
+        } else {
+            console.warn("Container '00696706001' not found");
+        }
+    },
+
+    // Setup first container (00696706) with BG2/BG3 sensors
+    setupContainer1: function (targetMesh) {
+        // Store reference for later use
+        this._containerMesh = targetMesh;
+
+        // Store original material before replacing it
+        this._originalMaterial = targetMesh.material.clone();
+
+        // Get bounding box for water level calculations
+        const box = new THREE.Box3().setFromObject(targetMesh);
+        this._containerBounds = {
+            min: box.min.clone(),
+            max: box.max.clone(),
+            height: box.max.y - box.min.y
+        };
+
+        console.log("Container 1 bounds:", this._containerBounds);
+
+        // Check geometry bounds in local space
+        if (!targetMesh.geometry.boundingBox) {
+            targetMesh.geometry.computeBoundingBox();
+        }
+
+        // Create water shader material for container 1
+        this.createWaterMaterial(targetMesh, 1);
+
+        console.log("Water material applied to container 1 '00696706'");
+    },
+
+    // Setup second container (00696706001) with BG4/BG5 sensors
+    setupContainer2: function (targetMesh) {
+        // Store reference for later use
+        this._containerMesh2 = targetMesh;
+
+        // Get bounding box for water level calculations
+        const box = new THREE.Box3().setFromObject(targetMesh);
+        this._containerBounds2 = {
+            min: box.min.clone(),
+            max: box.max.clone(),
+            height: box.max.y - box.min.y
+        };
+
+        console.log("Container 2 bounds:", this._containerBounds2);
+
+        // Check geometry bounds in local space
+        if (!targetMesh.geometry.boundingBox) {
+            targetMesh.geometry.computeBoundingBox();
+        }
+
+        // Create water shader material for container 2
+        this.createWaterMaterial(targetMesh, 2);
+
+        console.log("Water material applied to container 2 '00696706001'");
+    },
+
+    // Create realistic water shader material
+    createWaterMaterial: function (targetMesh, containerNumber) {
+        // Get the local geometry bounds for proper normalization
+        const localBounds = targetMesh.geometry.boundingBox;
+        const localMinZ = localBounds.min.z;
+        const localMaxZ = localBounds.max.z;
+
+        console.log(`Using local Z range for container ${containerNumber}:`, localMinZ, "to", localMaxZ);
+
+        // Water shader definition - use local space coordinates
+        const waterShader = {
+            uniforms: {
+                'fillLevel': { value: 0.1 },
+                'localMinZ': { value: localMinZ },
+                'localMaxZ': { value: localMaxZ },
+                'waterColor': { value: new THREE.Color(0x0066cc) }, // Blue water color
+            },
+            vertexShader: `
+                varying vec3 vWorldPosition;
+                varying vec3 vLocalPosition;
+                varying vec3 vNormal;
+                
+                void main() {
+                    vLocalPosition = position;
+                    vNormal = normalize(normalMatrix * normal);
+                    
+                    // Calculate world position properly
+                    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                    vWorldPosition = worldPosition.xyz;
+                    
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform float fillLevel;
+                uniform float localMinZ;
+                uniform float localMaxZ;
+                uniform vec3 waterColor;
+                
+                varying vec3 vWorldPosition;
+                varying vec3 vLocalPosition;
+                varying vec3 vNormal;
+                
+                void main() {
+                    // Use Z axis as vertical (height)
+                    float normalizedZ = (vLocalPosition.z - localMinZ) / (localMaxZ - localMinZ);
+                    
+                    // Check if we're in the water zone (below fill level)
+                    if (normalizedZ <= fillLevel) {
+                        // Water zone - realistic water appearance
+                        vec3 viewDirection = normalize(cameraPosition - vWorldPosition);
+                        float fresnel = pow(1.0 - abs(dot(normalize(vNormal), viewDirection)), 2.0);
+                        
+                        // Water color with depth effect
+                        vec3 waterBase = waterColor * 0.7;
+                        vec3 waterSurface = mix(waterBase, vec3(0.8, 0.9, 1.0), fresnel);
+                        
+                        gl_FragColor = vec4(waterSurface, 0.7 + fresnel * 0.2);
+                    } else {
+                        // Air zone - transparent container material
+                        vec3 viewDirection = normalize(cameraPosition - vWorldPosition);
+                        float fresnel = pow(1.0 - abs(dot(normalize(vNormal), viewDirection)), 1.5);
+                        
+                        // Glass-like transparent container
+                        vec3 glassColor = vec3(0.439, 0.557, 0.851); // #708ED9
+                        gl_FragColor = vec4(glassColor, 0.15 + fresnel * 0.2);
+                    }
+                }
+            `
+        };
+
+        // Create shader material
+        const waterMaterial = new THREE.ShaderMaterial({
+            uniforms: waterShader.uniforms,
+            vertexShader: waterShader.vertexShader,
+            fragmentShader: waterShader.fragmentShader,
+            transparent: true,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+
+        // Apply water material to the specific container
+        targetMesh.material = waterMaterial;
+
+        // Store material and sensor states based on container number
+        if (containerNumber === 1) {
+            this._waterMaterial = waterMaterial;
+            this._sensorStates = {
+                BG2: false, // Upper sensor 
+                BG3: false  // Lower sensor 
+            };
+        } else if (containerNumber === 2) {
+            this._waterMaterial2 = waterMaterial;
+            this._sensorStates2 = {
+                BG4: false, // Upper sensor 
+                BG5: false  // Lower sensor 
+            };
+        }
+
+        console.log(`Water shader created and applied for container ${containerNumber}`);
+    },
+
+    // Update water level based on sensor readings for container 1 (BG2/BG3)
+    updateWaterLevel: function () {
+        if (!this._waterMaterial || !this._sensorStates) return;
+
+        let targetFillLevel = 0.05; // Default: 5% (no sensors active)
+
+        // Sensor logic for container 1:
+        if (this._sensorStates.BG3) {
+            // BG3 active = water reached lower sensor, level is high
+            targetFillLevel = 0.85; // 85%
+        } else if (this._sensorStates.BG2) {
+            // BG2 active but BG3 not = water between sensors
+            targetFillLevel = 0.45; // 45%
+        } else {
+            // No sensors active = low water level
+            targetFillLevel = 0.05; // 5%
+        }
+
+        // Update shader uniform
+        this._waterMaterial.uniforms.fillLevel.value = targetFillLevel;
+
+        console.log(`Container 1 water level: BG2=${this._sensorStates.BG2}, BG3=${this._sensorStates.BG3} → ${(targetFillLevel * 100).toFixed(0)}%`);
+    },
+
+    // Update water level based on sensor readings for container 2 (BG4/BG5)
+    updateWaterLevel2: function () {
+        if (!this._waterMaterial2 || !this._sensorStates2) return;
+
+        let targetFillLevel = 0.05; // Default: 5% (no sensors active)
+
+        // Sensor logic for container 2:
+        if (this._sensorStates2.BG5) {
+            // BG5 active = water reached lower sensor, level is high
+            targetFillLevel = 0.85; // 85%
+        } else if (this._sensorStates2.BG4) {
+            // BG4 active but BG5 not = water between sensors
+            targetFillLevel = 0.45; // 45%
+        } else {
+            // No sensors active = low water level
+            targetFillLevel = 0.05; // 5%
+        }
+
+        // Update shader uniform
+        this._waterMaterial2.uniforms.fillLevel.value = targetFillLevel;
+
+        console.log(`Container 2 water level: BG4=${this._sensorStates2.BG4}, BG5=${this._sensorStates2.BG5} → ${(targetFillLevel * 100).toFixed(0)}%`);
+    },
+
     addTestLabel: function () {
         // Prozess
         this.createLabel('status', 'Process Ready: No', new THREE.Vector3(0, 1.0, 0), 0.1, 0.02);
@@ -432,15 +672,35 @@ looker.plugins.visualizations.add({
             } else if (tagName.includes('BG4-SH')) {
                 const color = (value === 'Yes') ? 0x00ff00 : 0xff0000;
                 this.updateLabel('bg4', "BG4", color);
+                // Update water level sensor state for container 2
+                if (this._sensorStates2) {
+                    this._sensorStates2.BG4 = (value === 'Yes');
+                    this.updateWaterLevel2();
+                }
             } else if (tagName.includes('BG5-SL')) {
                 const color = (value === 'Yes') ? 0x00ff00 : 0xff0000;
                 this.updateLabel('bg5', "BG5", color);
+                // Update water level sensor state for container 2
+                if (this._sensorStates2) {
+                    this._sensorStates2.BG5 = (value === 'Yes');
+                    this.updateWaterLevel2();
+                }
             } else if (tagName.includes('BG2-SH')) {
                 const color = (value === 'Yes') ? 0x00ff00 : 0xff0000;
                 this.updateLabel('bg2', "BG2", color);
+                // Update water level sensor state for container 1
+                if (this._sensorStates) {
+                    this._sensorStates.BG2 = (value === 'Yes');
+                    this.updateWaterLevel();
+                }
             } else if (tagName.includes('BG3-SL')) {
                 const color = (value === 'Yes') ? 0x00ff00 : 0xff0000;
                 this.updateLabel('bg3', "BG3", color);
+                // Update water level sensor state for container 1
+                if (this._sensorStates) {
+                    this._sensorStates.BG3 = (value === 'Yes');
+                    this.updateWaterLevel();
+                }
             } else if (tagName.includes('MA2')) {
                 const color = (value === 'Yes') ? 0x00ff00 : 0xff0000;
                 this.updateLabel('ma2', `MA2: ${value === 'Yes' ? 'On' : 'Off'}`, color);
