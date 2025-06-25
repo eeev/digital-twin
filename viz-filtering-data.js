@@ -81,7 +81,7 @@ looker.plugins.visualizations.add({
 
                                         // Add axes helper
                                         const axesHelper = new THREE.AxesHelper(5);
-                                        this._scene.add(axesHelper);
+                                        //this._scene.add(axesHelper);
 
                                         // Load environment map
                                         const exrLoader = new THREE.EXRLoader();
@@ -532,11 +532,11 @@ looker.plugins.visualizations.add({
         let targetFillLevel = 0.05; // Default: 5% (no sensors active)
 
         // Sensor logic for container 1:
-        if (this._sensorStates.BG3) {
-            // BG3 active = water reached lower sensor, level is high
-            targetFillLevel = 0.85; // 85%
-        } else if (this._sensorStates.BG2) {
-            // BG2 active but BG3 not = water between sensors
+        if (this._sensorStates.BG2) {
+            // BG2 active = water reached upper sensor, level is high
+            targetFillLevel = 0.80; // 80%
+        } else if (this._sensorStates.BG3) {
+            // BG3 active = water reached lower sensor, medium level
             targetFillLevel = 0.45; // 45%
         } else {
             // No sensors active = low water level
@@ -556,11 +556,11 @@ looker.plugins.visualizations.add({
         let targetFillLevel = 0.05; // Default: 5% (no sensors active)
 
         // Sensor logic for container 2:
-        if (this._sensorStates2.BG5) {
-            // BG5 active = water reached lower sensor, level is high
-            targetFillLevel = 0.85; // 85%
-        } else if (this._sensorStates2.BG4) {
-            // BG4 active but BG5 not = water between sensors
+        if (this._sensorStates2.BG4) {
+            // BG4 active = water reached upper sensor, level is high
+            targetFillLevel = 0.80; // 80%
+        } else if (this._sensorStates2.BG5) {
+            // BG5 active = water reached lower sensor, medium level
             targetFillLevel = 0.45; // 45%
         } else {
             // No sensors active = low water level
