@@ -14,6 +14,7 @@ looker.plugins.visualizations.add({
     _font: null, // Das geladene Three.js Font Objekt
     _statusTextMesh: null, // Referenz auf das 3D Text Mesh
     _labels: {}, // Store all labels here
+    _labelProperties: {}, // Store original label properties (size, height, position, rotation)
 
     create: function (element, config) {
         // Add a loading indicator
@@ -158,6 +159,22 @@ looker.plugins.visualizations.add({
                                                 this._controls.update();
                                                 this._modelLoaded = true;
 
+                                                // Add mirror sphere to test environment map
+                                                /*
+                                                const sphereGeometry = new THREE.SphereGeometry(0.15, 32, 32);
+                                                const sphereMaterial = new THREE.MeshStandardMaterial({
+                                                    color: 0xffffff,
+                                                    metalness: 1.0,
+                                                    roughness: 0.0,
+                                                    envMap: this._scene.environment,
+                                                    envMapIntensity: 1.0
+                                                });
+                                                const mirrorSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                                                mirrorSphere.position.set(1.5, 0, 0); // Position to the right of the model
+                                                this._scene.add(mirrorSphere);
+                                                console.log('Mirror sphere added to test environment map');
+                                                */
+
                                                 // Add test label
                                                 this.addTestLabel();
                                             },
@@ -214,6 +231,14 @@ looker.plugins.visualizations.add({
     createLabel: function (id, text, position, size = 0.1, height = 0.02) {
         if (!this._font) return null;
 
+        // Store original properties for this label
+        this._labelProperties[id] = {
+            size: size,
+            height: height,
+            position: position.clone(),
+            rotation: { x: 0, y: Math.PI / 2, z: 0 } // Default rotation
+        };
+
         // Remove existing label if it exists
         if (this._labels[id]) {
             this._scene.remove(this._labels[id]);
@@ -258,8 +283,11 @@ looker.plugins.visualizations.add({
     },
 
     // Helper function to update label text and color
-    updateLabel: function (id, text, color = 0x000000, height = 0.02, size = 0.05) {
-        if (!this._labels[id]) return;
+    updateLabel: function (id, text, color = 0x000000) {
+        if (!this._labels[id] || !this._labelProperties[id]) return;
+
+        // Get original properties for this label
+        const props = this._labelProperties[id];
 
         // Remove old mesh
         this._scene.remove(this._labels[id]);
@@ -272,11 +300,11 @@ looker.plugins.visualizations.add({
             }
         }
 
-        // Create new geometry with updated text
+        // Create new geometry with updated text using original size and height
         const textGeometry = new THREE.TextGeometry(text, {
             font: this._font,
-            size: size,
-            height: height,
+            size: props.size,
+            height: props.height,
             curveSegments: 12
         });
 
@@ -296,9 +324,9 @@ looker.plugins.visualizations.add({
         });
         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
 
-        // Copy position and rotation from old mesh
-        textMesh.position.copy(this._labels[id].position);
-        textMesh.rotation.copy(this._labels[id].rotation);
+        // Use original position and rotation
+        textMesh.position.copy(props.position);
+        textMesh.rotation.set(props.rotation.x, props.rotation.y, props.rotation.z);
 
         // Update stored label
         this._labels[id] = textMesh;
@@ -309,7 +337,7 @@ looker.plugins.visualizations.add({
         // Prozess
         this.createLabel('status', 'Process Ready: No', new THREE.Vector3(0, 1.0, 0), 0.1, 0.02);
         // Durchfluss
-        this.createLabel('flow rate', 'Flow Rate: 256 l/hr', new THREE.Vector3(0.6, 0.05, 0.2), 0.06, 0.01);
+        //.createLabel('flow rate', 'Flow Rate: 256 l/hr', new THREE.Vector3(0.6, 0.05, 0.2), 0.06, 0.01);
         // Motoren
         this.createLabel('mb7', 'MB7: Off', new THREE.Vector3(-0.2, 0.10, 0.2), 0.06, 0.01);
         // Füllstandssensoren
